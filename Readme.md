@@ -10,15 +10,6 @@ A high-performance server that pre-loads multiple ControlNet models into HPU mem
 - Concurrent request handling
 - Built-in memory management
 
-## Setup
-
-### Prerequisites
-- Habana HPU
-- Python 3.8+
-- Ray Serve
-- Optimum Habana
-- PIL, OpenCV
-
 ### Quick Start
 
 ```bash
@@ -29,20 +20,6 @@ ray start --head
 serve run serve:entrypoint
 ```
 ## Server Setup and Deployment
-
-### Project Structure
-```bash
-flash-controlnet/
-├── Dockerfile.locust          # Dockerfile for load testing
-├── Readme.md                  # This documentation
-├── client.py                  # Client code for testing
-├── locustfile.py             # Load testing configuration
-└── server/                   # Server components
-    ├── Dockerfile           # Server Dockerfile
-    ├── sd.py               # Stable Diffusion implementation
-    ├── serve.py            # Ray Serve implementation
-    └── start_serving.sh    # Server startup script
-```
 ### Server Deployment
 
 1. **Check Compatibility**
@@ -86,7 +63,7 @@ docker run -it --network host flash-controlnet-locust
 ### Monitoring and Logs
 
 - Check server logs:
-````
+```
 docker logs <server-container-id>
 ```
 - Monitor HPU usage:
