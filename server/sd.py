@@ -29,11 +29,13 @@ class HPUModelManager:
         self.loaded_models = {}
         self.warm_up_stats = {}
         self.memory_stats = {}
+
         if not hthpu.is_available():
             raise RuntimeError("HPU is not available")
         hthpu.reset_peak_memory_stats()
         mem_stats = hthpu.memory_stats()
-        total_memory = mem_stats["Limit"]
+        total_memory = mem_stats["Limit"]  # in bytes
+
         logger.info(f"Using HPU device: {hthpu.get_device_name()}")
         logger.info(f"Total HPU memory: {total_memory / 1024**3:.2f} GB")
         logger.info(f"Initial memory in use: {mem_stats['InUse'] / 1024**3:.2f} GB")
@@ -44,16 +46,17 @@ class HPUModelManager:
         if "canny" in model_path.lower():
             image_edges = cv2.Canny(image_np, 100, 200)
             return Image.fromarray(image_edges)
-
         elif "hed" in model_path.lower():
+            #  HED edge detection placeholder implementation
+            # todo: using the correct implementation
             gray = cv2.cvtColor(image_np, cv2.COLOR_RGB2GRAY)
             edges = cv2.Canny(gray, 50, 150)
             return Image.fromarray(edges)
-
         elif "depth" in model_path.lower():
+            # Basic depth estimation using grayscale as placeholder
+            # todo: using the correct implementation
             gray = cv2.cvtColor(image_np, cv2.COLOR_RGB2GRAY)
             return Image.fromarray(gray)
-
         else:
             raise ValueError(f"Unknown ControlNet type in {model_path}")
 
@@ -122,6 +125,7 @@ class HPUModelManager:
                 "memory_increase": post_load_memory["allocated"]
                 - initial_memory["allocated"],
             }
+
             logger.info(
                 f"""
             Model loaded successfully:
@@ -141,19 +145,19 @@ class HPUModelManager:
             pipeline = self.loaded_models[model_path]
             control_image = Image.new("RGB", (512, 512))
             prompt = "test warm up"
+
             warm_up_times = []
             for _ in range(num_warmup_steps):
                 start_time = time.time()
-                # Run inference with processed control image
                 _ = pipeline(
                     prompt,
                     image=control_image,
-                    num_inference_steps=2,  # Use minimal steps for warm-up
+                    num_inference_steps=2, 
                     guidance_scale=7.5,
                 ).images[0]
-
                 end_time = time.time()
                 warm_up_times.append(end_time - start_time)
+
             self.warm_up_stats[model_path] = {
                 "average_time": sum(warm_up_times) / len(warm_up_times),
                 "min_time": min(warm_up_times),
@@ -167,9 +171,7 @@ class HPUModelManager:
             - Max time: {self.warm_up_stats[model_path]['max_time']:.2f}s
             """
             )
-
             return True
-
         except Exception as e:
             logger.error(f"Warm-up failed for {model_path}: {str(e)}")
             return False
