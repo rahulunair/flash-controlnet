@@ -13,16 +13,15 @@ import logging
 
 from sd import HPUModelManager
 
-# Initialize logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
 @serve.deployment(
     ray_actor_options={"num_cpus": 10, "resources": {"HPU": 1}},
-    num_replicas=1,
-    max_ongoing_requests=100,
-    max_queued_requests=50,
+    num_replicas=1, # use 8 to distribute to 8 cards
+    max_ongoing_requests=2,
+    max_queued_requests=10000,
 )
 class ControlNetServer:
     def __init__(self):
@@ -37,30 +36,27 @@ class ControlNetServer:
                 bf16=True,
                 timestep_spacing="linspace",
             )
-            # Initialize HPU model manager
             self.manager = HPUModelManager(self.config)
-            # Load controlnet models
+            # Load controlnet models as sd21 is the model, using the controlnets for it
             self.controlnet_models = [
-                "lllyasviel/sd-controlnet-canny",
-                "lllyasviel/sd-controlnet-depth",
-                "lllyasviel/sd-controlnet-hed",
-            ]
+                "thibaud/controlnet-sd21-canny-diffusers",
+                "thibaud/controlnet-sd21-depth-diffusers",
+                "thibaud/controlnet-sd21-hed-diffusers",
+                "thibaud/controlnet-sd21-openpose-diffusers"
 
-            # Load all models
+            ]
             for model_path in self.controlnet_models:
                 if not self.manager.load_model(model_path):
                     logger.error(f"Failed to load model {model_path}")
                     raise RuntimeError(f"Failed to load model {model_path}")
-
-                # Warm up the model
                 if not self.manager.warm_up_model(model_path, num_warmup_steps=2):
                     logger.error(f"Failed to warm up model {model_path}")
                     raise RuntimeError(f"Failed to warm up model {model_path}")
 
             logger.info("ControlNetServer initialized successfully")
-
-            # Create a ThreadPoolExecutor for handling concurrent inferences
-            self.executor = ThreadPoolExecutor(max_workers=5)
+            self.executor = ThreadPoolExecutor(
+                max_workers=5
+            ) 
 
         except Exception as e:
             logger.error(f"Exception during server initialization: {e}")
@@ -71,6 +67,7 @@ class ControlNetServer:
         try:
             data = await request.json()
             logger.info(f"Request data: {data}")
+
             control_type = data.get("control_type", "canny").lower()
             prompt = data.get("prompt", "")
             image_data = data.get("image", None)
@@ -81,7 +78,6 @@ class ControlNetServer:
                     media_type="text/plain",
                     status_code=400,
                 )
-
             try:
                 image_bytes = base64.b64decode(image_data)
                 input_image = Image.open(BytesIO(image_bytes)).convert("RGB")
@@ -94,11 +90,10 @@ class ControlNetServer:
                     media_type="text/plain",
                     status_code=400,
                 )
-
             model_map = {
-                "canny": "lllyasviel/sd-controlnet-canny",
-                "depth": "lllyasviel/sd-controlnet-depth",
-                "hed": "lllyasviel/sd-controlnet-hed",
+                "canny": "thibaud/controlnet-sd21-canny-diffusers",
+                "depth": "thibaud/controlnet-sd21-depth-diffusers",
+                "hed": "thibaud/controlnet-sd21-hed-diffusers",
             }
             model_path = model_map.get(control_type)
             if not model_path:
@@ -108,13 +103,13 @@ class ControlNetServer:
                     media_type="text/plain",
                     status_code=400,
                 )
-            logger.info(f"Using control type: {control_type}, model path: {model_path}")
+            logger.info(f"Using control type: {control_type}, model path: {model_path}")l
             pipeline = self.manager.loaded_models[model_path]
             control_image = self.manager.preprocess_image(model_path, input_image)
             logger.info("Image preprocessed")
             loop = asyncio.get_event_loop()
             result = await loop.run_in_executor(
-                self.executor,  # Use the ThreadPoolExecutor
+                self.executor, 
                 self.run_inference,
                 pipeline,
                 prompt,
@@ -144,5 +139,4 @@ class ControlNetServer:
         ).images[0]
 
 
-# Deployment code
 entrypoint = ControlNetServer.bind()
