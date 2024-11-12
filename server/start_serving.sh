@@ -1,2 +1,2 @@
 ray start --head
-serve run serve:entrypoint &
+serve run serve:entrypoint
