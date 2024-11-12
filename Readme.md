@@ -35,7 +35,7 @@ docker run -it \
   --net=host \
   --ipc=host \
   -v $(pwd)/models:/root/.cache/huggingface/ \
-  gaudi-server
+  flash-controlnet-server
 ```
 This would initiate ray serve and after few seconds you should see something like:
 
