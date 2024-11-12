@@ -13,21 +13,14 @@ RUN apt-get update && apt-get install -y \
 # Install Python packages
 # Note: optimum-habana 1.14.1 is compatible with Gaudi software 1.18
 RUN pip install --no-cache-dir \
-    optimum-habana==1.14.1 \
-    opencv-python \
-    compel \
-    ray[serve]
+    "optimum-habana==1.14.1"  \
+    "opencv-python==4.10.0.84" \
+    "compel==2.0.3" ray[serve] "huggingface_hub"
 
-COPY server.py /app/server.py
-COPY start_Serving.sh /app/
+COPY sd.py /app/sd.py
+COPY serve.py /app/serve.py
+COPY start_serving.sh /app/
 WORKDIR /app
 
 # Set entry point to start serving
-ENTRYPOINT ["python3", "-m", "start_Serving"]
-
-# Usage instructions:
-# 1. Build: docker build -t gaudi-server .
-# 2. Run: docker run -it --network host --device=/dev/hl* --security-opt seccomp=unconfined gaudi-server
-#
-# Note: Using host network (--network host) means you don't need to explicitly expose ports
-# The container will use the host's network stack directly
+ENTRYPOINT ["bash", "start_serving.sh"]
