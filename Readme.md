@@ -64,7 +64,7 @@ Open a new terminal and follow the below steps:
 
 ## Setup
 
-Build the Docker image:
+Build the client Docker image:
 ```bash
 # cd to flash_controlnet repo:
 cd flash_controlnet
